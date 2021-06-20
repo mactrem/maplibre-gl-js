@@ -58,7 +58,23 @@ Compiling and caching GL shader programs is managed by the `Painter` and `Progra
 
 
 ## SourceCache
+-> style.loadJson -> _load -> style.addSource -> create SourceCache -> create Source
 
+painter.render
+-> sourceCache.prepare
+    -> tilel.upload / tile.prepare
+
+-> Transform -> How tile loading and caching works
+    -> where the covering tiles are calculated -> transform.coveringTiles
+        -> map._render -> if sources dirty -> style._updateSources(this.transform)
+            -> sourceCache.update(transform) -> Removes tiles that are outside the viewport and adds new tiles that are inside the viewport
+    -> coveringTiles
+        -> Return all coordinates that could cover this transform for a covering zoom level
+        -> coveringZoomLevel -> return a zoom level that will cover all tiles the transform
+        -> const cameraFrustum = Frustum.fromInvProjectionMatrix -> Frustum -> frustumCoords, frustumPlanes
+        -> RootTile.aabb.intersects(cameraFrustum) -> Aabb.intersects -> Performs a frustum-aabb intersection test
+            -> aabb -> axis-aligned bounding box -> view frustum culling
+        -> What happens with tiles which are outside -> are the retained?
 ## Transform
 
 The Transform (add link) class is responsible for transforming coordinates between different coordinate spaces.
@@ -98,7 +114,7 @@ For calculating the projection matrix of a tile the following two methods in the
         - bearing -> rotate z-Axis
         - pitch -> rotate x-Axis
         - translate x,y to center point / center of the map
-        - scale vertically pixel fro mmeters via multipling wihte meter/pixel -> z-value (e.g buildings) in vector tiles in meters compared to x,y
+        - scale vertically pixel fro meters via multiplying wihte meter/pixel -> z-value (e.g buildings) in vector tiles in meters compared to x,y
       - from camera space to NDC
         - calculate projection matrix via ma4.perspective
         - fov -> default 36.87
@@ -134,10 +150,10 @@ For calculating the projection matrix of a tile the following two methods in the
                -> the normalization for vector tiles happens in loadGeometry.js where every geometry of a feature gets transformed
                -> loadGeometry -> loads a geometry from a VectorTileFeature and scales it to the common extent used internally
                -> So the vertices for every tile given to the vertex shader has to be scaled on that EXTENT
-               -> loadGeometry is clled from the buckts -> LineBucket, FillBucket, ...
+               -> loadGeometry is called from the buckets -> LineBucket, FillBucket, ...
                -> The posMatrix (ModelViewProjection Matrix) for a tile expects coordinates in this coordinate system
    - In the painter class for every tile via OverscaledTileID
-   - calculates the posMatrix for transforming the coordiantes of a specific tile in the webgl clipsace
+   - calculates the posMatrix for transforming the coordinates of a specific tile in the webgl clipsace
    - takes the projMatrix an translates to the specified center in pixel coordinates
    - translate center, rotate pitch, rotate angle(bearing?), perspective transformation (fov, nearZ, farZ) via mat4.perspective
    - Tile coordiantes are scaled to EXTENT -> World pixel coordinates -> center with 512 pixel per tile

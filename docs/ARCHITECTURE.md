@@ -1,3 +1,11 @@
+## paint properties
+-> FillStyleLayer -> extends StyleLayer
+    -> StyleSpecification as Ctor argument
+    -> paint properties for drawFill -> PossibleEvaluatedProperty
+    -> paint.get("fill-style")
+    -> createBucket
+    -> ProgramConfiguration.setUnfiorms
+
 ## Components vector tiles rendering
 Map:
 _render Method
@@ -23,6 +31,9 @@ LineStyleLayer
       - Roughly 650 individual draw calls per frame -> 39k drawcalls per second
       - Layers are orderd list of draw calls
       - The less layers you have in your style the less draw calls you have -> better performance -> using fewer layers via expressions
+    - Render passes
+        - currently render layers in three different passes — offscreen, opaque and translucent
+        - opaque pass is “just” a performance optimization to allow early depth testing
     - Symbol
       - symbol collisions -> debug.html
     - Line
@@ -44,7 +55,15 @@ VectorTileWorkerSource.done/reloadTile -> wokerTile.parse -> createBucket
 
 Styles:
 - map.addLayer -> style.addLayer -> validate_style_min -> validate_layer -> validate_object -> validate.js
-
+- setStyle
+    - diff defaults to true -> style.setState performas diff
+    - Map._diffStyle -> Map._updateDiff -> Style.setState -> Style.diffStyles
+    - stylespec/diff.js -> diffStyles(before: StyleSpecification, after: StyleSpecification) -> Diff two stylesheet
+- Mapbox GL Style Specification
+    - style-spec
+        - types.js -> StyleSpecification -> setStyle, diffStyle
+        - diff.js -> Diff for updates
+        - validate_style.js
 
 WorkerTile:
 
@@ -134,7 +153,15 @@ Transform:
 - for transforming a single tile
 - When moving the map first _calcMatrices (projMatrix, invProjMatrix, pixelMatrix, mercatorMatrix) is called and then calculatePosMatrix
 - projMatrix -> matrix for conversion from location to GL coordinates (-1 .. 1)
+- labelPlaneMatrix
+    -> transforms from NDC (-1, 1) to pixel Coordinates
 - pixelMatrix -> matrix for conversion from location to screen coordinates
+    -> multiplies the labelPlaneMatrix with the projectionMatrix
+    -> the projectionMatrix converts to NDC
+    -> the labelPlaneMatrix converts to pixel coordinates -> order first translate then scale -> scale * translate * vec
+        -> Translates the coordinate system it to top left -> mat4.translate -1, 1
+            -> calculating the diff from the source crs to the dst crs
+        -> mat4.scale this.width / 2, -this.height / 2 -> the negative y value also rotates the y-axis
 - mercatorMatrix -> The mercatorMatrix can be used to transform points from mercator coordinates ([0, 0] nw, [1, 1] se) to GL coordinates.
 - calculatePosMatrix -> Calculate the posMatrix that, given a tile coordinate, would be used to display the tile on a map
     - called in sourc_cache.getVisibleCoordinates -> posMatrix is added to OverscaleTileId
